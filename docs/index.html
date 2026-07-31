@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VEGA — Estudo de Caso · Análise de Dados · Lucas Magalhães</title>
+<meta name="description" content="Case study de portfólio: painel de vendas Power BI (VEGA), com o relatório publicado embedado ao vivo.">
+<style>
+  :root {
+    --ink: #EDEAE1;
+    --surface: #FFFFFF;
+    --surface-2: #FBF9F3;
+    --rule: #DEDACD;
+    --text: #201D17;
+    --text-dim: #6B6656;
+    --accent: #C8362D;
+    --accent-soft: rgba(200,54,45,0.09);
+    --good: #1C8A4E;
+    --good-soft: rgba(28,138,78,0.10);
+    --shadow: 0 1px 2px rgba(32,29,23,0.06);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #14171C;
+      --surface: #1B1F27;
+      --surface-2: #20242E;
+      --rule: #2B3039;
+      --text: #ECE9E1;
+      --text-dim: #9299A6;
+      --accent: #E5534B;
+      --accent-soft: rgba(229,83,75,0.13);
+      --good: #22C55E;
+      --good-soft: rgba(34,197,94,0.12);
+      --shadow: 0 1px 2px rgba(0,0,0,0.35);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #14171C; --surface: #1B1F27; --surface-2: #20242E; --rule: #2B3039;
+    --text: #ECE9E1; --text-dim: #9299A6; --accent: #E5534B; --accent-soft: rgba(229,83,75,0.13);
+    --good: #22C55E; --good-soft: rgba(34,197,94,0.12); --shadow: 0 1px 2px rgba(0,0,0,0.35);
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --ink: #EDEAE1; --surface: #FFFFFF; --surface-2: #FBF9F3; --rule: #DEDACD;
+    --text: #201D17; --text-dim: #6B6656; --accent: #C8362D; --accent-soft: rgba(200,54,45,0.09);
+    --good: #1C8A4E; --good-soft: rgba(28,138,78,0.10); --shadow: 0 1px 2px rgba(32,29,23,0.06);
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .serif { font-family: Rockwell, "Roboto Slab", Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", "Liberation Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
+  .prose { max-width: 640px; }
+
+  header.masthead { padding: 56px 0 28px; border-bottom: 1px solid var(--rule); }
+  .eyebrow {
+    font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin-bottom: 18px;
+  }
+  .masthead-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .masthead h1 { font-size: clamp(40px, 7vw, 64px); font-weight: 700; letter-spacing: 0.01em; }
+  .masthead .subtitle { font-size: 16px; color: var(--text-dim); margin-top: 6px; }
+  .byline { text-align: right; font-size: 13px; color: var(--text-dim); white-space: nowrap; }
+  .byline strong { color: var(--text); font-weight: 600; }
+
+  section.thesis { padding: 64px 0 8px; }
+  .thesis blockquote { margin: 0; font-size: clamp(24px, 3.6vw, 34px); line-height: 1.32; font-weight: 500; }
+  .thesis blockquote em { font-style: normal; color: var(--accent); box-shadow: inset 0 -0.42em 0 var(--accent-soft); }
+  .thesis p { margin-top: 22px; color: var(--text-dim); font-size: 16px; max-width: 620px; }
+
+  .ledger {
+    margin-top: 44px; display: grid; grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+  }
+  .ledger .cell { padding: 20px 22px; border-left: 1px solid var(--rule); }
+  .ledger .cell:first-child { border-left: none; }
+  .ledger .label { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .ledger .value { font-size: clamp(19px, 2.4vw, 25px); font-weight: 700; letter-spacing: -0.01em; }
+  .ledger .value.flag { color: var(--accent); }
+  .ledger .delta { margin-top: 8px; font-size: 12.5px; color: var(--text-dim); }
+  .ledger .delta.bad { color: var(--accent); }
+  .ledger .delta.good { color: var(--good); }
+  @media (max-width: 720px) {
+    .ledger { grid-template-columns: repeat(2, 1fr); }
+    .ledger .cell:nth-child(3) { border-left: none; }
+  }
+
+  section.exhibit { padding: 76px 0; border-top: 1px solid var(--rule); }
+  .exhibit .tag { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 10px; }
+  .exhibit h2 { font-size: clamp(22px, 3vw, 28px); font-weight: 700; max-width: 620px; }
+  .exhibit .caption { margin-top: 14px; color: var(--text-dim); font-size: 15.5px; max-width: 580px; }
+  .exhibit .caption strong { color: var(--text); font-weight: 600; }
+
+  .frame {
+    margin-top: 32px; border-radius: 4px; overflow: hidden;
+    border: 1px solid var(--rule); box-shadow: var(--shadow); background: var(--surface-2);
+  }
+  .frame-bar { display: flex; align-items: center; gap: 7px; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+  .frame-bar .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); }
+  .frame-bar .name { margin-left: 8px; font-size: 11.5px; color: var(--text-dim); }
+  .frame-bar .mono { margin-left: auto; font-size: 11px; color: var(--text-dim); }
+  .frame img { display: block; width: 100%; height: auto; }
+  .frame.reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .frame.reveal.in { opacity: 1; transform: translateY(0); }
+
+  .aside {
+    margin-top: 40px; padding: 20px 24px; border-left: 3px solid var(--accent);
+    background: var(--accent-soft); border-radius: 0 4px 4px 0;
+  }
+  .aside .tag { color: var(--accent); }
+  .aside p { margin: 8px 0 0; font-size: 14.5px; color: var(--text-dim); max-width: 560px; }
+  .aside p strong { color: var(--text); }
+  .aside .example { margin-top: 14px; display: flex; gap: 28px; flex-wrap: wrap; }
+  .aside .example div { font-size: 13px; }
+  .aside .example .num { font-size: 17px; font-weight: 700; }
+
+  section.metodo { padding: 72px 0; border-top: 1px solid var(--rule); }
+  .metodo-grid { margin-top: 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .metodo-grid .col .k { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .metodo-grid .col ul { margin: 0; padding: 0; list-style: none; }
+  .metodo-grid .col li { font-size: 14.5px; padding: 7px 0; border-top: 1px solid var(--rule); }
+  .metodo-grid .col li:first-child { border-top: none; }
+  @media (max-width: 760px) { .metodo-grid { grid-template-columns: 1fr; } }
+
+  section.live { padding: 72px 0 88px; border-top: 1px solid var(--rule); }
+  .live h2 { font-size: clamp(22px, 3vw, 28px); font-weight: 700; }
+  .live .caption { margin-top: 12px; color: var(--text-dim); font-size: 15.5px; max-width: 580px; }
+  .live-frame { margin-top: 30px; border-radius: 6px; overflow: hidden; border: 1px solid var(--rule); box-shadow: var(--shadow); }
+  .live-frame .bar { display: flex; align-items: center; gap: 7px; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--rule); }
+  .live-frame .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); }
+  .live-frame .url { margin-left: 10px; font-size: 11.5px; color: var(--text-dim); font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+  .live-frame .live-badge {
+    margin-left: auto; display: flex; align-items: center; gap: 6px;
+    font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--good); font-weight: 700;
+  }
+  .live-badge .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--good); animation: pulse 1.8s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .live-badge .pulse { animation: none; } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .live-frame iframe { display: block; width: 100%; height: 620px; border: none; background: var(--surface-2); }
+  @media (max-width: 640px) { .live-frame iframe { height: 460px; } }
+
+  footer.colophon { border-top: 1px solid var(--rule); padding: 40px 0 56px; }
+  .colophon-row { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; font-size: 13px; color: var(--text-dim); }
+  .colophon-row strong { color: var(--text); }
+  .colophon-row .col { max-width: 320px; }
+  .colophon-row .col + .col { text-align: right; }
+  @media (max-width: 600px) { .colophon-row .col + .col { text-align: left; } }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Estudo de caso · Análise de dados</div>
+    <div class="masthead-row">
+      <div>
+        <h1 class="serif">VEGA</h1>
+        <div class="subtitle">Distribuidora de eletrônicos — painel de vendas em Power BI</div>
+      </div>
+      <div class="byline">
+        por <strong>Lucas Magalhães</strong><br>
+        projeto de portfólio · dados fictícios
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="thesis">
+  <div class="wrap">
+    <blockquote class="serif prose">
+      Tablets lidera o faturamento da empresa. <em>É exatamente por isso que a margem está sendo drenada.</em>
+    </blockquote>
+    <p>
+      A VEGA é uma distribuidora fictícia de eletrônicos (tablets, áudio, vídeo, acessórios), construída como
+      base de portfólio. O painel nasceu de uma pergunta simples que qualquer Diretora Comercial faria:
+      quem realmente traz resultado — não só receita, mas lucro? A resposta, como os dados mostram abaixo,
+      tem uma pegadinha.
+    </p>
+
+    <div class="ledger mono">
+      <div class="cell">
+        <div class="label">Faturamento total</div>
+        <div class="value">R$ 215,8 Mi</div>
+        <div class="delta">jan/2025 a jan/2026</div>
+      </div>
+      <div class="cell">
+        <div class="label">% Margem</div>
+        <div class="value">39,06%</div>
+        <div class="delta">Ticket médio: R$ 1.321</div>
+      </div>
+      <div class="cell">
+        <div class="label">Categoria líder em receita</div>
+        <div class="value">Tablets</div>
+        <div class="delta">maior receita da empresa</div>
+      </div>
+      <div class="cell">
+        <div class="label">Pior margem da empresa</div>
+        <div class="value flag">Tablets · 30%</div>
+        <div class="delta">Áudio: melhor margem, 50%</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="exhibit">
+  <div class="wrap">
+    <div class="tag">Exhibit A</div>
+    <h2 class="serif">A visão executiva já entrega a primeira pista</h2>
+    <p class="caption">
+      Atingimento de meta, faturamento, meta e margem no topo, seguidos do comparativo Faturamento × Meta
+      mês a mês — a base para investigar onde o resultado está vazando.
+    </p>
+    <div class="frame reveal">
+      <div class="frame-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="name">VEGA · Visão Executiva</span>
+        <span class="mono">jan/25–jan/26</span>
+      </div>
+      <img src="screenshots/executiva.png" alt="Página Visão Executiva do painel VEGA: KPIs de atingimento de meta, faturamento, meta e margem, e gráfico de faturamento vs. meta por mês.">
+    </div>
+  </div>
+</section>
+
+<section class="exhibit">
+  <div class="wrap">
+    <div class="tag">Exhibit B</div>
+    <h2 class="serif">Onde a história fecha, produto por produto</h2>
+    <p class="caption">
+      O gráfico de dispersão cruza faturamento × margem por categoria — <strong>Tablets aparece isolado</strong>,
+      sozinho no canto de mais receita e menos margem (30%, contra 50% de Áudio). Descendo à tabela, a
+      classificação de margem chega ao produto específico, não só à categoria.
+    </p>
+    <div class="frame reveal">
+      <div class="frame-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="name">VEGA · Produtos</span>
+        <span class="mono">jan/25–jan/26</span>
+      </div>
+      <img src="screenshots/produtos.png" alt="Página Produtos do painel VEGA: KPIs de faturamento, margem e ticket médio, gráfico de dispersão faturamento vs. margem por categoria, gráfico de barras de ponto de atenção, e tabela de produtos com classificação de margem.">
+    </div>
+
+    <div class="aside">
+      <div class="tag">Nota técnica</div>
+      <p>
+        Toda comparação entre dois percentuais nesse painel usa <strong>pontos percentuais (p.p.)</strong>,
+        não % relativo — são coisas diferentes, e confundi-las é o erro de leitura mais comum em relatório de negócio.
+      </p>
+      <div class="example mono">
+        <div><div class="num">39,06% − 40%</div>= −0,94 p.p.</div>
+        <div><div class="num">10% → 20%</div>= +10 p.p. <em>ou</em> +100% relativo</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="exhibit">
+  <div class="wrap">
+    <div class="tag">Exhibit C</div>
+    <h2 class="serif">A terceira camada: quem vende, e como</h2>
+    <p class="caption">
+      Apenas 3 dos 12 vendedores batem a meta — 9 ficam abaixo, inclusive <strong>Carla Ferreira</strong>,
+      a própria líder de receita (R$ 44,0 Mi), 0,82% abaixo do seu alvo. Volume alto não é sinônimo
+      de meta batida, no vendedor ou na categoria.
+    </p>
+    <div class="frame reveal">
+      <div class="frame-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="name">VEGA · Vendedores</span>
+        <span class="mono">jan/25–jan/26</span>
+      </div>
+      <img src="screenshots/vendedores.png" alt="Página Vendedores do painel VEGA: KPIs de atingimento de meta da equipe, líder de receita e vendedor em atenção, tabelas de distância da meta por vendedor e por gerente, e gráfico de atingimento mensal da equipe.">
+    </div>
+  </div>
+</section>
+
+<section class="metodo">
+  <div class="wrap">
+    <div class="tag" style="color:var(--accent);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;">Método</div>
+    <h2 class="serif" style="font-size:clamp(22px,3vw,28px);font-weight:700;margin-top:10px;">Como o painel foi construído</h2>
+    <div class="metodo-grid">
+      <div class="col">
+        <div class="k">Modelagem</div>
+        <ul>
+          <li>Modelo estrela: fatos de vendas e metas, dimensões de produto, vendedor e calendário</li>
+          <li>Medidas DAX de comparativo mensal, cor condicional e ranking dinâmico</li>
+          <li>Projeto em formato PBIP (arquivos versionáveis, não .pbix binário)</li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="k">Dados</div>
+        <ul>
+          <li>163.418 itens de venda simulados</li>
+          <li>Período: jan/2025 a jan/2026</li>
+          <li>Base fictícia, construída para portfólio</li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="k">Ferramental</div>
+        <ul>
+          <li>Power BI Desktop</li>
+          <li>Claude Code como copiloto de modelagem e formatação de visuais</li>
+          <li>Toda decisão de negócio e validação de número, sempre manual</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="live">
+  <div class="wrap">
+    <h2 class="serif">Explore o painel ao vivo</h2>
+    <p class="caption">
+      Este é o relatório real, publicado no Power BI Service — filtre por mês, ano, ou navegue entre
+      as três páginas acima.
+    </p>
+    <div class="live-frame">
+      <div class="bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">app.powerbi.com/view — VEGA · Vendas</span>
+        <span class="live-badge"><span class="pulse"></span>ao vivo</span>
+      </div>
+      <iframe
+        src="https://app.powerbi.com/view?r=eyJrIjoiZTYzMjVjNjctY2NjYi00Y2UyLTgxOTYtNmI4M2EzMzQzY2I0IiwidCI6IjY1OWNlMmI4LTA3MTQtNDE5OC04YzM4LWRjOWI2MGFhYmI1NyJ9"
+        title="Painel VEGA ao vivo — Power BI"
+        allowfullscreen></iframe>
+    </div>
+  </div>
+</section>
+
+<footer class="colophon">
+  <div class="wrap colophon-row">
+    <div class="col">
+      <strong>Lucas Magalhães</strong><br>
+      Análise de Dados · Power BI
+    </div>
+    <div class="col">
+      Fonte: Base de Dados.xlsx (fictícia)<br>
+      Publicado via Power BI Publish to Web
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var frames = document.querySelectorAll('.frame.reveal');
+    if (reduce || !('IntersectionObserver' in window)) {
+      frames.forEach(function (f) { f.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    frames.forEach(function (f) { io.observe(f); });
+  })();
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 **Estudo de caso de análise de dados**: uma distribuidora fictícia de eletrônicos, uma pergunta de negócio, e a descoberta que ela escondia.
 
-🔴 **[Ver o dashboard ao vivo](https://app.powerbi.com/view?r=eyJrIjoiZTYzMjVjNjctY2NjYi00Y2UyLTgxOTYtNmI4M2EzMzQzY2I0IiwidCI6IjY1OWNlMmI4LTA3MTQtNDE5OC04YzM4LWRjOWI2MGFhYmI1NyJ9)**
+🔴 **[Ver o dashboard ao vivo](https://magalhes.github.io/Dashboard-Vendas/)**
 
 ---
 
@@ -54,6 +54,7 @@ Vendas.pbip                 → arquivo raiz do projeto (abre no Power BI Deskto
 Vendas.Report/               → definição do relatório (páginas, visuais)
 Vendas.SemanticModel/        → modelo semântico (tabelas, medidas DAX, relacionamentos)
 Base de Dados.xlsx           → fonte de dados (fictícia)
+docs/index.html              → case study navegável (GitHub Pages), com o painel embedado
 docs/screenshots/            → capturas das 3 páginas
 Roteiro-Apresentacao.md      → roteiro de apresentação rápida do projeto
 ```
