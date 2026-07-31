@@ -1,0 +1,27 @@
+model Model
+	culture: pt-BR
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: pt-BR
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+queryGroup Bases
+
+	annotation PBI_QueryGroupOrder = 0
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["Bases Vendas","Base Matriz","fVendas","fMetas","dProdutos","dVendedores","dCalendario"]
+
+annotation PBI_ProTooling = ["DevMode","MCP-PBIModeling"]
+
+ref table fVendas
+ref table fMetas
+ref table dProdutos
+ref table dVendedores
+ref table dCalendario
+ref table Medidas
+
+ref cultureInfo pt-BR
+

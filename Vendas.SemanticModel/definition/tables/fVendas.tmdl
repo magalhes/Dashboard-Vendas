@@ -1,0 +1,91 @@
+/// Fato principal · 1 linha = 1 item de produto vendido numa nota fiscal. Fonte: Base de Dados.xlsx, aba Vendas. 163.418 linhas.
+table fVendas
+	lineageTag: d5badd8f-6b40-4f73-bb1a-446ea0b1e9ae
+
+	column data_venda
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 158fdd1f-8e0a-4d06-8d12-150118e7aad8
+		summarizeBy: none
+		sourceColumn: data_venda
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column nfe
+		dataType: int64
+		formatString: 0
+		lineageTag: 2757e51e-0ebe-4c1c-a177-d38cafd3edc9
+		summarizeBy: none
+		sourceColumn: nfe
+
+		annotation SummarizationSetBy = User
+
+	column id_produto
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: e5c2de84-6ea8-4c47-a87e-7b36ffe936c2
+		summarizeBy: none
+		sourceColumn: id_produto
+
+		annotation SummarizationSetBy = Automatic
+
+	column id_vendedor
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 41ba7ad4-984f-4102-ad35-01057557f6a5
+		summarizeBy: none
+		sourceColumn: id_vendedor
+
+		annotation SummarizationSetBy = Automatic
+
+	column valor_unit
+		dataType: decimal
+		formatString: "R$"\ #,0.###############;-"R$"\ #,0.###############;"R$"\ #,0.###############
+		lineageTag: 446113fa-e3f1-4777-800c-55ced5f74a22
+		summarizeBy: sum
+		sourceColumn: valor_unit
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"pt-BR"}
+
+	column qtd
+		dataType: int64
+		formatString: 0
+		lineageTag: c0a95498-32b3-4673-9df1-0697815ef908
+		summarizeBy: sum
+		sourceColumn: qtd
+
+		annotation SummarizationSetBy = Automatic
+
+	column faturamento
+		dataType: double
+		lineageTag: 47cc5844-aee2-4af9-a610-860ad9be007e
+		summarizeBy: sum
+		sourceColumn: faturamento
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fVendas = m
+		mode: import
+		queryGroup: Bases
+		source =
+				let
+				    Fonte = #"Base Matriz",
+				    Vendas_Sheet = Fonte{[Item="Vendas",Kind="Sheet"]}[Data],
+				    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Vendas_Sheet, [PromoteAllScalars=true]),
+				    #"Tipo Alterado" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos",{{"data_venda", type date}, {"nfe", Int64.Type}, {"id_produto", Int64.Type}, {"id_vendedor", Int64.Type}, {"valor_unit", Currency.Type}, {"qtd", Int64.Type}, {"faturamento", type number}}),
+				    #"Linhas Filtradas" = Table.SelectRows(#"Tipo Alterado", each [id_produto] <> null and [id_produto] <> "")
+				in
+				    #"Linhas Filtradas"
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Table
+

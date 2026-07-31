@@ -1,0 +1,45 @@
+/// Dimensão de vendedores · 12 vendedores. foto_vendedor mesclada de Fotos_Vendedores.xlsx via id extraído da URL. Dimensão conformada: liga-se a fVendas e fMetas.
+table dVendedores
+	lineageTag: 5115c2ee-ba65-47c3-8451-b8df2efdd479
+
+	column id_vendedor
+		dataType: int64
+		formatString: 0
+		lineageTag: c71eea2d-502f-445a-b09c-42ec1e29faf6
+		summarizeBy: none
+		sourceColumn: id_vendedor
+
+		annotation SummarizationSetBy = Automatic
+
+	column nome_vendedor
+		dataType: string
+		lineageTag: dce0bcfe-c52e-4850-9c98-75a9b99d67aa
+		summarizeBy: none
+		sourceColumn: nome_vendedor
+
+		annotation SummarizationSetBy = Automatic
+
+	column nome_gerente
+		dataType: string
+		lineageTag: cf5b14b0-df69-4dea-ade0-e598d8fe2e1c
+		summarizeBy: none
+		sourceColumn: nome_gerente
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dVendedores = m
+		mode: import
+		queryGroup: Bases
+		source =
+				let
+				    Fonte = #"Base Matriz",
+				    Equipe_Sheet = Fonte{[Item="Equipe",Kind="Sheet"]}[Data],
+				    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Equipe_Sheet, [PromoteAllScalars=true]),
+				    #"Tipo Alterado" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos",{{"id_vendedor", Int64.Type}, {"nome_vendedor", type text}, {"nome_gerente", type text}})
+				in
+				    #"Tipo Alterado"
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Table
+

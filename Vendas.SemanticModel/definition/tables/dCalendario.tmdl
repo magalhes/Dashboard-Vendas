@@ -1,0 +1,136 @@
+/// Dimensão de datas · calendário diário gerado dinamicamente a partir do intervalo de fVendas (arredondado pro ano cheio). Marcada como Tabela de Datas. Dimensão conformada: liga-se a fVendas e fMetas.
+table dCalendario
+	lineageTag: bc769892-9ad6-487e-88f1-3b4f332932e6
+	dataCategory: Time
+
+	column Data
+		dataType: dateTime
+		isKey
+		formatString: Long Date
+		lineageTag: 50788a16-f7cf-43cc-a302-17ebe3518655
+		summarizeBy: none
+		sourceColumn: Data
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Ano
+		dataType: int64
+		formatString: 0
+		lineageTag: 0741e08a-c11d-4658-8c39-63eb72ebd1da
+		summarizeBy: none
+		sourceColumn: Ano
+
+		annotation SummarizationSetBy = User
+
+	column Mês
+		dataType: int64
+		formatString: 0
+		lineageTag: dd2d8e63-0a19-4763-a425-9d66d77b09ac
+		summarizeBy: none
+		sourceColumn: Mês
+
+		annotation SummarizationSetBy = User
+
+	column AnoMes
+		dataType: string
+		lineageTag: 747690b5-3d5e-479b-b1a0-c327273f4bcc
+		summarizeBy: none
+		sourceColumn: AnoMes
+		sortByColumn: Mês
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Nome do Mês'
+		dataType: string
+		lineageTag: 3875ca5e-b769-4232-95b7-91837cc00f10
+		summarizeBy: none
+		sourceColumn: Nome do Mês
+		sortByColumn: Mês
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column Trimestre
+		dataType: int64
+		formatString: 0
+		lineageTag: c042aa6b-abb6-4146-b6c3-7dc09c75a8da
+		summarizeBy: none
+		sourceColumn: Trimestre
+
+		annotation SummarizationSetBy = Automatic
+
+	column Dia
+		dataType: int64
+		formatString: 0
+		lineageTag: 5b592ecc-3b20-4704-82f4-85135fdacabf
+		summarizeBy: none
+		sourceColumn: Dia
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Nome do Dia'
+		dataType: string
+		lineageTag: 55aecc66-d945-48f4-ae9d-b5dbf4316f03
+		summarizeBy: none
+		sourceColumn: Nome do Dia
+		sortByColumn: NumeroDiaSemana
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column NumeroDiaSemana
+		dataType: int64
+		formatString: 0
+		lineageTag: ba92bfe7-4981-4f51-86dd-94fc532f183b
+		summarizeBy: none
+		sourceColumn: NumeroDiaSemana
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Fim da Semana'
+		dataType: string
+		lineageTag: 6842c2f3-1d74-44cc-b90d-22c2793b4f4b
+		summarizeBy: none
+		sourceColumn: Fim da Semana
+
+		annotation SummarizationSetBy = Automatic
+
+	column PrimeiroDiaMes = DATE(dCalendario[Ano], dCalendario[Mês], 1)
+		dataType: dateTime
+		formatString: mmm/yy
+		lineageTag: c570f1df-6446-4f29-bf09-2387c518d2d3
+		summarizeBy: none
+
+	partition dCalendario = m
+		mode: import
+		queryGroup: Bases
+		source =
+				let
+				    DataMin = Date.StartOfYear(List.Min(fVendas[data_venda])),
+				    DataMax = Date.EndOfYear(List.Max(fVendas[data_venda])),
+				    QtdDias = Duration.Days(DataMax - DataMin) + 1,
+				    ListaDatas = List.Dates(DataMin, QtdDias, #duration(1,0,0,0)),
+				    TabelaBase = Table.FromList(ListaDatas, Splitter.SplitByNothing(), {"Data"}),
+				    TipoData = Table.TransformColumnTypes(TabelaBase, {{"Data", type date}}),
+				    #"Ano Inserido" = Table.AddColumn(TipoData, "Ano", each Date.Year([Data]), Int64.Type),
+				    #"Mês Inserido" = Table.AddColumn(#"Ano Inserido", "Mês", each Date.Month([Data]), Int64.Type),
+				    #"Personalização Adicionada" = Table.AddColumn(#"Mês Inserido", "AnoMes", each Date.ToText([Data], "yyyy-MM"), type text),
+				    #"Nome do Mês Inserido" = Table.AddColumn(#"Personalização Adicionada", "Nome do Mês", each Date.MonthName([Data]), type text),
+				    #"Trimestre Inserido" = Table.AddColumn(#"Nome do Mês Inserido", "Trimestre", each Date.QuarterOfYear([Data]), Int64.Type),
+				    #"Dia Inserido" = Table.AddColumn(#"Trimestre Inserido", "Dia", each Date.Day([Data]), Int64.Type),
+				    #"Nome do Dia Inserido" = Table.AddColumn(#"Dia Inserido", "Nome do Dia", each Date.DayOfWeekName([Data]), type text),
+				    #"Núm Dia Semana Inserido" = Table.AddColumn(#"Nome do Dia Inserido", "NumeroDiaSemana", each Date.DayOfWeek([Data]), Int64.Type),
+				    #"Fim da Semana Inserido" = Table.AddColumn(#"Núm Dia Semana Inserido", "Fim da Semana", each if Date.DayOfWeek([Data]) = 0 or Date.DayOfWeek([Data]) = 6 then "Sim" else "Não", type text)
+				in
+				    #"Fim da Semana Inserido"
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Table
+

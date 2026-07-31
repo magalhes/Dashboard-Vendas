@@ -1,0 +1,82 @@
+/// Dimensão de produtos · 20 produtos em 4 categorias (Acessórios, Áudio, Vídeo, Tablets). Inclui percentual_custo (premissa de negócio) e foto_produto. Fonte: Base de Dados.xlsx, aba Produtos.
+table dProdutos
+	lineageTag: e015ca6c-a09d-496d-ada0-bdea7746a4ce
+
+	column id_produto
+		dataType: int64
+		formatString: 0
+		lineageTag: 328041b8-6771-4aa9-b669-eb3a38d9550b
+		summarizeBy: none
+		sourceColumn: id_produto
+
+		annotation SummarizationSetBy = Automatic
+
+	column nome_produto
+		dataType: string
+		lineageTag: 2f52774c-fe4d-4ecd-83c4-4520321dcd4e
+		summarizeBy: none
+		sourceColumn: nome_produto
+
+		annotation SummarizationSetBy = Automatic
+
+	column categoria_produto
+		dataType: string
+		lineageTag: 44da7340-3809-439a-bc16-0ec4cafc8389
+		summarizeBy: none
+		sourceColumn: categoria_produto
+
+		annotation SummarizationSetBy = Automatic
+
+	column linha_produto
+		dataType: string
+		lineageTag: e80c3e8d-df5a-4234-8442-9fee8b281346
+		summarizeBy: none
+		sourceColumn: linha_produto
+
+		annotation SummarizationSetBy = Automatic
+
+	column foto_produto
+		dataType: string
+		lineageTag: c627fe6b-9943-42d9-b55f-1bee01884e29
+		summarizeBy: none
+		sourceColumn: foto_produto
+
+		annotation SummarizationSetBy = Automatic
+
+	column percentual_custo
+		dataType: double
+		lineageTag: 220da554-6396-449f-be6f-abda47072f6f
+		summarizeBy: none
+		sourceColumn: percentual_custo
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Categoria_Rotulo =
+			
+			dProdutos[categoria_produto] & " " & FORMAT([% Margem], "0%")
+		lineageTag: 66a2fe7e-0066-4fbf-9da9-a221050e43ca
+		summarizeBy: none
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dProdutos = m
+		mode: import
+		queryGroup: Bases
+		source =
+				let
+				    Fonte = #"Base Matriz",
+				    Produtos_Sheet = Fonte{[Item="Produtos",Kind="Sheet"]}[Data],
+				    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Produtos_Sheet, [PromoteAllScalars=true]),
+				    #"Tipo Alterado" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos",{{"id_produto", Int64.Type}, {"nome_produto", type text}, {"categoria_produto", type text}, {"linha_produto", type text}, {"foto_produto", type text}}),
+				    #"Valor Substituído" = Table.ReplaceValue(#"Tipo Alterado","http://","https://",Replacer.ReplaceText,{"foto_produto"}),
+				    #"Coluna Condicional Adicionada" = Table.AddColumn(#"Valor Substituído", "percentual_custo", each if [categoria_produto] = "Acessórios" then 0.6 else if [categoria_produto] = "Áudio" then 0.5 else if [categoria_produto] = "Vídeo" then 0.55 else if [categoria_produto] = "Tablets" then 0.7 else null),
+				    #"Tipo Alterado1" = Table.TransformColumnTypes(#"Coluna Condicional Adicionada",{{"percentual_custo", type number}})
+				in
+				    #"Tipo Alterado1"
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,855 @@
+table Medidas
+	lineageTag: d61c8d16-0d79-421e-8f2d-60ef037a66de
+
+	/// Custo estimado das vendas, calculado linha a linha multiplicando o faturamento pelo percentual_custo da categoria do produto. Em R$.
+	measure 'Custo Total' = ```
+			SUMX(fVendas, fVendas[faturamento] * RELATED(dProdutos[percentual_custo]))
+			
+			```
+		formatString: "R$"\ #,0;-"R$"\ #,0;"R$"\ #,0
+		displayFolder: Base
+		lineageTag: 47d29667-7d60-4a50-ad9e-851de167c40a
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	/// Soma do faturamento de todas as vendas. Medida-base do modelo: Margem, % Atingimento e % Participação dependem dela. Em R$.
+	measure 'Faturamento Total' = SUM(fVendas[faturamento])
+		formatString: "R$"\ #,0;-"R$"\ #,0;"R$"\ #,0
+		displayFolder: Base
+		lineageTag: 5fae71c4-a987-4e1b-98a6-809c8cfa96c5
+
+		annotation PBI_FormatHint = {"currencyCulture":"pt-BR"}
+
+	/// Faturamento Total menos Custo Total, em R$.
+	measure Margem = ```
+			[Faturamento Total] - [Custo Total]
+			
+			```
+		formatString: "R$"\ #,0;-"R$"\ #,0;"R$"\ #,0
+		displayFolder: Base
+		lineageTag: 79f6abbb-a386-4297-b646-a9d5d804bbd0
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	/// Margem como percentual do Faturamento Total.
+	measure '% Margem' = ```
+			DIVIDE([Margem], [Faturamento Total])
+			
+			```
+		formatString: 0.00%;-0.00%;0.00%
+		displayFolder: Base
+		lineageTag: 54e68714-d0de-4d2a-b793-fcd78d2f0dbd
+
+	/// Soma das metas de vendas cadastradas por vendedor e mês. Em R$.
+	measure 'Meta Total' = SUM(fMetas[valor_meta])
+		formatString: "R$"\ #,0;-"R$"\ #,0;"R$"\ #,0
+		displayFolder: Base
+		lineageTag: bbb19ebd-fe65-4b0e-b017-27c67c2ef85c
+
+		annotation PBI_FormatHint = {"currencyCulture":"pt-BR"}
+
+	/// Faturamento Total dividido pela Meta Total. 100% = bateu a meta exata.
+	measure '% Atingimento' = DIVIDE([Faturamento Total], [Meta Total])
+		formatString: 0.00%;-0.00%;0.00%
+		displayFolder: Base
+		lineageTag: 88a58a11-aac6-456a-8dc0-251a25663a28
+
+	/// Valor médio por item vendido (por linha de fVendas), em R$.
+	measure 'Ticket Médio' = ```
+			AVERAGE(fVendas[faturamento])
+			
+			```
+		formatString: "R$"\ #,0;-"R$"\ #,0;"R$"\ #,0
+		displayFolder: Produtos
+		lineageTag: b486daef-e356-41a2-9abd-041d59599b95
+
+		annotation PBI_FormatHint = {"currencyCulture":"pt-BR"}
+
+	/// % Atingimento recalculado para o mês anterior ao filtro atual, via DATEADD sobre dCalendario.
+	measure '% Atingimento Mês Anterior' = ```
+			
+			CALCULATE(
+			    [% Atingimento],
+			    DATEADD(dCalendario[Data], -1, MONTH)
+			)
+			
+			```
+		formatString: #,0.00%;-#,0.00%;#,0.00%
+		displayFolder: Base
+		lineageTag: 4111b61d-96ce-407f-bb33-713665554cea
+
+	measure 'Cor Rótulo Atingimento MoM' = ```
+			
+			VAR vTemMesFiltrado = HASONEVALUE(dCalendario[Mês]) -- Ajuste para a sua coluna de filtro de mês
+			VAR vAtual = [% Atingimento]
+			VAR vAnterior = [% Atingimento Mês Anterior]
+			VAR vDiff = vAtual - vAnterior
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se NÃO houver um mês filtrado (filtro em "Todos"), retorna CINZA:
+			        NOT vTemMesFiltrado, "#A3B5D9",
+			
+			        -- 2. Se não houver dado atual ou do mês anterior, retorna CINZA:
+			        ISBLANK(vAtual) || ISBLANK(vAnterior), "#A3B5D9",
+			        
+			        -- 3. Variações (Crescimento / Queda):
+			        vDiff > 0, "#22C55E", -- Verde
+			        vDiff < 0, "#EF4444", -- Vermelho
+			        
+			        -- 4. Neutro / Zero
+			        "#A3B5D9"            -- Cinza
+			    )
+			```
+		displayFolder: Executiva\Cores
+		lineageTag: 3d4212a9-a67f-4ecf-ac54-0070f5b4c3dc
+
+	measure 'Faturamento Mês Anterior' =
+			
+			CALCULATE(
+			    [Faturamento Total],
+			    DATEADD('dCalendario'[Data], -1, MONTH)
+			)
+		displayFolder: Base
+		lineageTag: 4214ffae-84cf-47d8-a5dc-0786cfa73419
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Rótulo Faturamento MoM' = ```
+			
+			VAR vTemMesFiltrado = HASONEVALUE(dCalendario[Mês]) -- Ajuste dCalendario[Mês] para a coluna do seu filtro se necessário
+			VAR vAtual = [Faturamento Total]
+			VAR vAnterior = [Faturamento Mês Anterior]
+			VAR vVarPct = DIVIDE(vAtual - vAnterior, vAnterior)
+			VAR vAbsPct = ABS(vVarPct)
+			VAR vTextoBase = FORMAT(vAbsPct, "0.0%") & " vs mês anterior"
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se NÃO houver um mês individual filtrado, exibe a mensagem de sem comparação
+			        NOT vTemMesFiltrado, "Sem comparação", -- (Dica: se preferir que não apareça nada, troque "Sem comparação" por BLANK())
+			        
+			        -- 2. Regras normais quando um mês estiver selecionado
+			        ISBLANK(vAtual) || ISBLANK(vAnterior), "Não há dados",
+			        vVarPct > 0, "▲ " & vTextoBase,
+			        vVarPct < 0, "▼ " & vTextoBase,
+			        "► 0.0% vs mês anterior"
+			    )
+			```
+		displayFolder: Base\Rótulos
+		lineageTag: 3eeb571a-6ae2-4215-a1c0-b7fdca4cfc12
+
+	measure 'Cor Rótulo Faturamento MoM' = ```
+			
+			VAR vTexto = [Rótulo Faturamento MoM]
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- Casos neutros / sem dados -> Cinza
+			        vTexto = "Sem comparação" || 
+			        CONTAINSSTRING(vTexto, "Não") || 
+			        CONTAINSSTRING(vTexto, "dados"), "#A3B5D9",
+			        
+			        -- Crescimento -> Verde
+			        CONTAINSSTRING(vTexto, "▲"), "#22C55E",
+			        
+			        -- Queda -> Vermelho
+			        CONTAINSSTRING(vTexto, "▼"), "#EF4444",
+			        
+			        -- Padrão -> Cinza
+			        "#85837B"
+			    )
+			```
+		displayFolder: Base\Cores
+		lineageTag: f2965cfa-e5b8-4770-947a-b4f2ec30cdf5
+
+	/// Corrigido em 27/07: a versão anterior tinha sido reescrita copiando 'Rótulo Faturamento MoM' e esqueceram de trocar as variáveis — calculava a variação de [Faturamento Total] (-4,0% em nov/25) e rotulava como se fosse a variação de [% Atingimento], que na real subiu +2,3 p.p. (104,2%↞106,5%). Restaurada a lógica correta (diferença em p.p., não % relativo — atingimento é um percentual, comparar dois percentuais é diferença em p.p., não razão), mantendo o guard HASONEVALUE que foi adicionado depois (mostra 'Sem comparação' quando mais de 1 mês está selecionado).
+	measure 'Rótulo Atingimento MoM' =
+			IF(
+			    NOT HASONEVALUE(dCalendario[Mês]),
+			    "Sem comparação",
+			    VAR vAtual = [% Atingimento]
+			    VAR vAnterior = [% Atingimento Mês Anterior]
+			    VAR vDiffPP = (vAtual - vAnterior) * 100
+			    VAR vAbsDiff = ABS(vDiffPP)
+			    VAR vTextoBase = FORMAT(vAbsDiff, "0.0") & " p.p. vs mês anterior"
+			    RETURN
+			        SWITCH(
+			            TRUE(),
+			            ISBLANK(vAtual) || ISBLANK(vAnterior), "Não há dados",
+			            vDiffPP > 0, "▲ " & vTextoBase,
+			            vDiffPP < 0, "▼ " & vTextoBase,
+			            "► 0,0 p.p. vs mês anterior"
+			        )
+			)
+		displayFolder: Executiva\Rótulos
+		lineageTag: 5334b381-9b57-479d-b3dd-2dbcafb245d7
+
+	/// Corrigido em 27/07: usava MAX(dCalendario[Data]) sem filtrar por venda real, pegando o fim do calendário (dez/26, sem nenhum dado) em vez do último mês real (jan/26) — dCalendario se estende até o fim do ano civil por construção. CALCULATE(MAX(...), fVendas) restringe às datas que têm pelo menos 1 linha de venda de verdade, via a relacionamento existente.
+	measure 'Rótulo Mês Atual' =
+			
+			VAR vTemMesFiltrado = HASONEVALUE(dCalendario[Mês]) -- Ajuste dCalendario[Mês] para a coluna exata do seu filtro
+			VAR vData = CALCULATE(MAX('dCalendario'[Data]), fVendas)
+			VAR vMesAno = FORMAT(vData, "mmm/yy")
+			
+			RETURN
+			    IF(
+			        NOT vTemMesFiltrado,
+			        "Visão geral", -- Ou troque por BLANK() se preferir deixar esse espaço totalmente limpo
+			        IF(
+			            ISBLANK(vData),
+			            BLANK(),
+			            "mês atual (" & LOWER(vMesAno) & ")"
+			        )
+			    )
+		displayFolder: Executiva\Rótulos
+		lineageTag: ea1bb4ed-5ce3-4afd-99f3-8ab3796071f5
+
+	measure 'Cor Barra Meta' = ```
+			
+			VAR vFaturamento = [Faturamento Total]
+			VAR vMeta = [Meta Total]
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- Se não houver faturamento ou meta no mês, mantém a cor padrão (Azul)
+			        ISBLANK(vFaturamento) || ISBLANK(vMeta), "#38BDF8",
+			        
+			        -- Se o faturamento for maior ou igual à meta, fica VERDE:
+			        vFaturamento >= vMeta, "#22C55E",
+			        
+			        -- Caso contrário (não bateu a meta), fica AZUL:
+			        "#38BDF8"
+			    )
+			```
+		displayFolder: Executiva\Cores
+		lineageTag: da7d7b66-fd85-491f-b8b8-6c24242eda54
+
+	measure 'Cor Rótulo Meta Margem' =
+			
+			VAR vMargemAtual = [% Margem]
+			VAR vMeta = 0.40 -- Valor da meta (40%)
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(vMargemAtual), "#A0AEC0",          -- Cinza (sem dados)
+			        vMargemAtual >= vMeta, "#22C55E",          -- Verde (atingiu a meta)
+			        "#F59E0B"                                  -- Laranja/Âmbar (abaixo da meta)
+			    )
+		displayFolder: Base\Cores
+		lineageTag: 469be696-8984-4010-8882-138ce82c8e4b
+
+	/// Diferença entre % Margem e a meta interna de 40%, em pontos percentuais, com seta de direção. Retorna "Não há dados" quando % Margem não existe no contexto atual (ex.: categoria sem venda no período).
+	measure 'Rótulo Margem vs Meta' = ```
+			
+			VAR vTemMesFiltrado = HASONEVALUE(dCalendario[Mês]) -- Ajuste para a coluna do seu filtro de Mês
+			VAR vMetaMargem = 0.4
+			VAR vAtual = ROUND([% Margem], 4)
+			VAR vDiffPP = (vAtual - vMetaMargem) * 100
+			VAR vAbsDiff = ABS(vDiffPP)
+			VAR vTextoBase = FORMAT(vAbsDiff, "0.00") & " p.p. vs meta (40%)"
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se NÃO houver um mês individual filtrado (filtro em "Todos"):
+			        NOT vTemMesFiltrado, "Sem comparação", -- (troque por BLANK() se preferir deixar o espaço totalmente vazio)
+			        
+			        -- 2. Regras normais quando um mês estiver selecionado:
+			        ISBLANK([% Margem]), "Não há dados",
+			        vDiffPP > 0, "▲ " & vTextoBase,
+			        vDiffPP < 0, "▼ " & vTextoBase,
+			        "► 0,00 p.p. vs meta (40%)"
+			    )
+			```
+		displayFolder: Base\Rótulos
+		lineageTag: 936ff2db-9424-4fc9-bd76-6bace86b90e6
+
+	/// Cor (hex) do "Rótulo Margem vs Meta": verde quando % Margem atinge a meta interna de 40%, âmbar quando fica abaixo, cinza quando não há dados no contexto atual.
+	measure 'Cor Rótulo Margem vs Meta' =
+			
+			VAR vTemMes = HASONEVALUE(dCalendario[Mês]) -- Ajuste para o nome da sua coluna de filtro de mês
+			VAR vTemAno = HASONEVALUE(dCalendario[Ano]) -- Ajuste para o nome da sua coluna de filtro de ano
+			VAR vMetaMargem = 0.4
+			VAR vAtual = ROUND([% Margem], 4)
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se NÃO houver Mês E nem Ano selecionado (Visão geral / Sem comparação):
+			        NOT (vTemMes || vTemAno), "#A3B5D9",
+			
+			        -- 2. Se a margem estiver em branco / sem dados:
+			        ISBLANK([% Margem]), "#A3B5D9",
+			
+			        -- 3. Margem atingiu a meta (>= 40%):
+			        vAtual >= vMetaMargem, "#22C55E", -- Verde
+			
+			        -- 4. Margem abaixo da meta (< 40%):
+			        "#F59E0B" -- Laranja
+			    )
+		displayFolder: Base\Cores
+		lineageTag: a759236e-86b5-41c7-aa1a-dd5fa99174d0
+
+	measure 'Ticket Médio Mês Anterior' =
+			
+			CALCULATE(
+			    [Ticket Médio],
+			    DATEADD('dCalendario'[Data], -1, MONTH)
+			)
+		displayFolder: Produtos
+		lineageTag: c15a4e21-6b8f-4a1d-9e3c-2f7b8d5a9c10
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Rótulo Ticket Médio MoM' =
+			
+			VAR vAtual = [Ticket Médio]
+			VAR vAnterior = [Ticket Médio Mês Anterior]
+			VAR vVarPct = DIVIDE(vAtual - vAnterior, vAnterior)
+			VAR vAbsPct = ABS(vVarPct)
+			VAR vTextoBase = FORMAT(vAbsPct, "0.0%") & " vs mês anterior"
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(vAtual) || ISBLANK(vAnterior), "Não há dados",
+			        vVarPct > 0, "▲ " & vTextoBase,
+			        vVarPct < 0, "▼ " & vTextoBase,
+			        "Sem comparação"
+			    )
+		displayFolder: Produtos\Rótulos
+		lineageTag: d26b5f32-7c9a-4b2e-8f4d-3a8c9e6b1d21
+
+	measure 'Cor Rótulo Ticket Médio MoM' = ```
+			
+			VAR vTexto = [Rótulo Ticket Médio MoM]
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se o texto do rótulo tiver a seta de alta -> Verde
+			        CONTAINSSTRING(vTexto, "▲"), "#22C55E",
+			        
+			        -- 2. Se o texto do rótulo tiver a seta de queda -> Vermelho
+			        CONTAINSSTRING(vTexto, "▼"), "#EF4444",
+			        
+			        -- 3. Sem comparação, sem dados ou zerado -> Cinza
+			        "#A3B5D9"
+			    )
+			```
+		displayFolder: Produtos\Cores
+		lineageTag: e37c6043-8d0b-4c3f-9a5e-4b9d0f7c2e32
+
+	measure 'Cor Marcador Dispersão' =
+			
+			IF(
+			    SELECTEDVALUE(dProdutos[categoria_produto]) = "Tablets",
+			    "#EF4444", -- Vermelho/Coral para Tablets
+			    "#475569"  -- Cinza escuro para os demais
+			)
+		displayFolder: Produtos\Cores
+		lineageTag: 94cbab51-8a14-4e71-a872-3c9acee7ad2d
+
+	measure 'Cor Dinamica Margem' =
+			
+			VAR vMargemAtual = [% Margem]
+			
+			-- Identifica a maior e a menor margem considerando os filtros de data/mês
+			VAR vMaiorMargem = MAXX(ALLSELECTED(dProdutos[categoria_produto]), [% Margem])
+			VAR vMenorMargem = MINX(ALLSELECTED(dProdutos[categoria_produto]), [% Margem])
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(vMargemAtual), "#334155",
+			        vMargemAtual = vMaiorMargem, "#22C55E", -- Verde para a Campeã em Margem
+			        vMargemAtual = vMenorMargem, "#EF4444", -- Vermelho para a Pior Margem
+			        "#334155"                               -- Cinza Escuro para as intermediárias
+			    )
+		displayFolder: Produtos\Cores
+		lineageTag: ce614f52-1ef0-4e11-a4e6-44debe9c32a2
+
+	measure 'Subtitulo Alerta Margem' = ```
+			
+			VAR vPiorCategoriaTabela = 
+			    TOPN(1, ALLSELECTED(dProdutos[categoria_produto]), [% Margem], ASC)
+			
+			VAR vNomePior = CALCULATE(SELECTEDVALUE(dProdutos[categoria_produto]), vPiorCategoriaTabela)
+			VAR vValorPior = CALCULATE([% Margem], vPiorCategoriaTabela)
+			
+			RETURN
+			    vNomePior & " tem a pior margem (" & FORMAT(vValorPior, "0%") & ")"
+			```
+		displayFolder: Produtos\Rótulos
+		lineageTag: e7871d9b-b04a-4580-803e-c359be16d15a
+
+	measure 'Classificação Margem' =
+			
+			VAR vMargem = [% Margem]
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(vMargem), BLANK(),
+			        vMargem < 0.35, "Baixa",
+			        vMargem <= 0.45, "Média",
+			        "Alta"
+			    )
+		displayFolder: Produtos
+		lineageTag: d6ed7737-7a79-47cb-915d-4329a609b4b1
+
+	measure 'Cor Fundo Classificação' =
+			
+			VAR vClass = [Classificação Margem]
+			RETURN
+			    SWITCH(
+			        vClass,
+			        "Baixa", "#EF4444",  -- Vermelho
+			        "Média", "#334155",  -- Cinza escuro
+			        "Alta",  "#22C55E",  -- Verde
+			        "#334155"
+			    )
+		displayFolder: Produtos\Cores
+		lineageTag: 54e2bdc4-61cb-4064-b510-474bf267163c
+
+	measure 'Badge Classificação SVG' = ```
+			
+			VAR vClass = [Classificação Margem]
+			VAR vCor = [Cor Fundo Classificação]
+			RETURN
+			    IF(
+			        ISBLANK([% Margem]),
+			        BLANK(),
+			        "data:image/svg+xml;utf8," & 
+			        "<svg xmlns='http://www.w3.org/2000/svg' width='100' height='30'>" &
+			          "<rect width='80' height='22' x='10' y='4' rx='11' fill='" & vCor & "'/>" &
+			          "<text x='50' y='19' font-size='12' font-family='Segoe UI' font-weight='bold' fill='white' text-anchor='middle'>" & vClass & "</text>" &
+			        "</svg>"
+			    )
+			```
+		displayFolder: Produtos
+		lineageTag: 5e5494ba-6e94-4952-83c1-98e2e9d343dd
+		dataCategory: ImageUrl
+
+	measure 'Rótulo Faltante Meta' = ```
+			
+			VAR vTemMesFiltrado = HASONEVALUE(dCalendario[Mês]) -- Ajuste dCalendario[Mês] para a coluna exata do seu filtro de Mês
+			VAR vMeta = [Meta Total]
+			VAR vFat = [Faturamento Total]
+			VAR vDiferenca = vMeta - vFat
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se NÃO houver um único mês filtrado (filtro em "Todos"):
+			        NOT vTemMesFiltrado, "Sem comparação", -- (Dica: troque por BLANK() se preferir deixar o espaço vazio)
+			        
+			        -- 2. Regras normais quando um mês estiver selecionado:
+			        ISBLANK(vMeta) || ISBLANK(vFat), BLANK(),
+			        vDiferenca <= 0, "Meta batida! 🎉",
+			        "Restante " & FORMAT(vDiferenca, "R$ #,##0")
+			    )
+			```
+		displayFolder: Executiva\Rótulos
+		lineageTag: ee8be3d5-fde1-4cfb-a5f1-c1c645da1849
+
+	measure 'Rotulo Atingimento Equipe' = ```
+			
+			VAR vTemMes = HASONEVALUE(dCalendario[Mês]) -- Ajuste para a coluna exata do seu filtro de mês
+			VAR vTemAno = HASONEVALUE(dCalendario[Ano]) -- Ajuste para a coluna exata do seu filtro de ano
+			VAR vPct = [% Atingimento]
+			VAR vDiff = ABS(1 - vPct)
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se NÃO houver Mês E nem Ano selecionado (Visão Geral / Todos):
+			        NOT (vTemMes || vTemAno), "Sem comparação",
+			
+			        -- 2. Se a porcentagem estiver em branco / sem dados:
+			        ISBLANK(vPct), BLANK(),
+			        
+			        -- 3. Se atingiu ou superou 100%:
+			        vPct >= 1, FORMAT(vDiff, "0.0%") & " acima da meta",
+			        
+			        -- 4. Se ficou abaixo de 100%:
+			        FORMAT(vDiff, "0.0%") & " abaixo da meta"
+			    )
+			```
+		displayFolder: Vendedores\Rótulos
+		lineageTag: 226300e8-b0d9-42df-b677-9b2e4557aded
+
+	/// Nome do vendedor com maior Faturamento Total no período filtrado. Vendedores sem faturamento ficam fora da disputa, então retorna BLANK quando não há venda nenhuma no período (antes nomeava um vendedor arbitrário). Espelha 'Nome Vendedor Atencao'.
+	measure 'Nome Lider Periodo' =
+			VAR vLiderTabela =
+			    TOPN(
+			        1,
+			        FILTER(ALLSELECTED(dVendedores[nome_vendedor]), NOT ISBLANK([Faturamento Total])),
+			        [Faturamento Total], DESC
+			    )
+			RETURN
+			    CALCULATE(MAX(dVendedores[nome_vendedor]), vLiderTabela)
+		displayFolder: Vendedores\Rótulos
+		lineageTag: 22848f11-b74b-4f75-a659-88394b24345a
+
+	/// % Atingimento do líder do período, como texto pronto pro rótulo de referência do card (ex.: "100% da meta"). Retorna "Não há dados" quando não há venda no período (antes devolvia a string órfã " da meta", sem número).
+	measure 'Rotulo Lider Receita Label' = ```
+			
+			VAR vTemMes = HASONEVALUE(dCalendario[Mês]) -- Ajuste para a coluna de filtro de mês
+			VAR vTemAno = HASONEVALUE(dCalendario[Ano]) -- Ajuste para a coluna de filtro de ano
+			
+			VAR vLiderNome = [Nome Lider Periodo]
+			
+			-- Busca o faturamento e % da meta do líder
+			VAR vFat = CALCULATE([Faturamento Total], dVendedores[nome_vendedor] = vLiderNome)
+			VAR vPct = CALCULATE([% Atingimento], dVendedores[nome_vendedor] = vLiderNome)
+			
+			-- Formatação do Faturamento (Milhões, Mil ou R$)
+			VAR vFatText = 
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(vFat) || vFat = 0, "R$ 0,0",
+			        vFat >= 1000000, "R$ " & FORMAT(vFat / 1000000, "0.0") & " Mi",
+			        vFat >= 1000, "R$ " & FORMAT(vFat / 1000, "0.0") & " Mil",
+			        "R$ " & FORMAT(vFat, "#,##0")
+			    )
+			
+			-- Formatação do % da Meta
+			VAR vPctText = FORMAT(vPct, "0%") & " da meta"
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se NÃO houver Mês E nem Ano selecionado:
+			        NOT (vTemMes || vTemAno), "Sem comparação",
+			        
+			        -- 2. Se não houver líder (sem dados):
+			        ISBLANK(vLiderNome), BLANK(), 
+			        
+			        -- 3. Exibe o texto normal formatado:
+			        vFatText & " · " & vPctText
+			    )
+			```
+		displayFolder: Vendedores\Rótulos
+		lineageTag: b00d559d-39f6-45f8-92bb-da9669e15b83
+
+	/// Cor (hex) do rótulo 'Lider Pct Meta': verde quando o líder bateu 100%, âmbar quando ficou abaixo, cinza quando não há dados no período (antes pintava o 'Não há dados' de âmbar, cor de alerta).
+	measure 'Cor Lider Receita Label' = ```
+			
+			VAR vTemMes = HASONEVALUE(dCalendario[Mês]) -- Ajuste para a coluna de filtro de mês
+			VAR vTemAno = HASONEVALUE(dCalendario[Ano]) -- Ajuste para a coluna de filtro de ano
+			
+			VAR vLiderNome = [Nome Lider Periodo]
+			VAR vPct = CALCULATE([% Atingimento], dVendedores[nome_vendedor] = vLiderNome)
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se NÃO houver Mês E nem Ano selecionado (Visão Geral):
+			        NOT (vTemMes || vTemAno), "#A3B5D9",
+			        
+			        -- 2. Sem dados / Em branco:
+			        ISBLANK(vPct), "#A3B5D9",
+			        
+			        -- 3. Regras de cores conforme o atingimento:
+			        vPct >= 1.00, "#22C55E", -- Verde (Meta Batida)
+			        vPct >= 0.85, "#F59E0B", -- Laranja / Amarelo (Próximo da meta - ex: 99%)
+			        "#EF4444"                -- Vermelho (Abaixo de 85%)
+			    )
+			```
+		displayFolder: Vendedores\Cores
+		lineageTag: 1f70e769-3365-4fde-8e34-3b144dc08d38
+
+	measure 'Nome Vendedor Atencao' =
+			VAR vPiorTabela =
+			    TOPN(
+			        1,
+			        FILTER(ALLSELECTED(dVendedores[nome_vendedor]), NOT ISBLANK([% Atingimento])),
+			        [% Atingimento], ASC
+			    )
+			RETURN
+			    CALCULATE(MAX(dVendedores[nome_vendedor]), vPiorTabela)
+		displayFolder: Vendedores\Rótulos
+		lineageTag: 2eef032c-6c83-4f9f-bee8-6a46d4a04096
+
+	/// Quanto faltou de meta para o vendedor em atenção (mesmo critério de 'Nome Vendedor Atencao': menor % Atingimento entre quem tem meta cadastrada no período filtrado). Texto pronto pro rótulo de referência do card, ex.: "14% abaixo da meta". Retorna "todos bateram a meta" quando até o pior vendedor superou 100% (acontece em jun/25 e nov/25).
+	measure 'Rótulo Vendedor Atencao Pct Meta' = ```
+			
+			VAR vTemMes = HASONEVALUE(dCalendario[Mês]) -- Ajuste para a sua coluna exata de Mês
+			VAR vTemAno = HASONEVALUE(dCalendario[Ano]) -- Ajuste para a sua coluna exata de Ano
+			
+			VAR vPiorTabela =
+			    TOPN(
+			        1,
+			        FILTER(ALLSELECTED(dVendedores[nome_vendedor]), NOT ISBLANK([% Atingimento])),
+			        [% Atingimento], ASC
+			    )
+			VAR vPct =
+			    CALCULATE([% Atingimento], vPiorTabela)
+			VAR vGap = 1 - vPct
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se NÃO houver Mês E nem Ano selecionado (Visão Geral):
+			        NOT (vTemMes || vTemAno), "Sem comparação",
+			        
+			        -- 2. Sem dados para calcular:
+			        ISBLANK(vPct), "Não há dados",
+			        
+			        -- 3. Caso o pior vendedor tenha superado 100%:
+			        vGap <= 0, "todos bateram a meta",
+			        
+			        -- 4. Exibe a distância para a meta do pior vendedor:
+			        FORMAT(vGap, "0%") & " abaixo da meta"
+			    )
+			```
+		displayFolder: Vendedores\Rótulos
+		lineageTag: 8d567da7-c880-46be-b485-574714d69cfc
+
+	/// Corrigido em 27/07: o denominador contava TODOS os 12 vendedores cadastrados, mesmo os sem meta/venda no mês (% Atingimento em branco) — achado testando Mês=março, que mostrava '0 de 12' quando só 8 vendedores têm dado nesse mês (Estevan Souza, Julia Silva, Julieta Gomes e Mateus Costa ficam de fora). Agora usa a mesma tabela filtrada de 'Rótulo vendedores Abaixo Meta' (NOT ISBLANK([% Atingimento])), então os dois cartões sempre somam o mesmo total.
+	measure 'Vendedores Bateram Meta Card' =
+			VAR vTabelaVendedoresComDado =
+			    FILTER(
+			        VALUES(dVendedores[nome_vendedor]),
+			        NOT ISBLANK([% Atingimento])
+			    )
+			VAR vTotalVendedores = COALESCE(COUNTROWS(vTabelaVendedoresComDado), 0)
+			VAR vBateramMeta =
+			    COALESCE(
+			        COUNTROWS(
+			            FILTER(
+			                vTabelaVendedoresComDado,
+			                [% Atingimento] >= 1
+			            )
+			        ),
+			        0
+			    )
+			RETURN
+			    vBateramMeta & " de " & vTotalVendedores
+		displayFolder: Vendedores
+		lineageTag: 72cc9fe1-bc38-4410-ac3b-ecdd16d70d50
+
+	/// Corrigido em 27/07: a versão anterior fazia 'total - bateram', contando vendedor SEM meta/venda cadastrada no mês (% Atingimento em branco) como 'abaixo da meta'. Achado testando Mês=junho no relatório publicado: Julieta Gomes e Estevan Souza não têm dado em jun/25 (buraco de meta documentado), e apareciam como '2 ficaram abaixo' quando os 10 vendedores com dado bateram 100% a meta. Agora conta direto quem tem dado E ficou abaixo. COALESCE(...,0) necessário porque COUNTROWS de tabela vazia retorna BLANK nesse modelo, não 0 — sem isso o rótulo aparece sem o número (' ficaram abaixo').
+	measure 'Rótulo vendedores Abaixo Meta' =
+			
+			VAR vTemMes = HASONEVALUE(dCalendario[Mês]) -- Ajuste para a coluna exata do seu filtro de mês
+			VAR vTemAno = HASONEVALUE(dCalendario[Ano]) -- Ajuste para a coluna exata do seu filtro de ano
+			
+			VAR vTabelaVendedores = VALUES(dVendedores[nome_vendedor])
+			VAR vAbaixo =
+			    COALESCE(
+			        COUNTROWS(
+			            FILTER(
+			                vTabelaVendedores,
+			                NOT ISBLANK([% Atingimento]) && [% Atingimento] < 1
+			            )
+			        ),
+			        0
+			    )
+			
+			RETURN
+			    IF(
+			        NOT (vTemMes || vTemAno),
+			        "Sem comparação",
+			        vAbaixo & " ficaram abaixo"
+			    )
+		displayFolder: Vendedores\Rótulos
+		lineageTag: 785f3bdc-6be0-41a6-a116-f00a72a2d27e
+
+	measure 'Cor Label Atingimento Equipe' =
+			
+			VAR vTemMes = HASONEVALUE(dCalendario[Mês]) -- Ajuste para a coluna exata do seu filtro de mês
+			VAR vTemAno = HASONEVALUE(dCalendario[Ano]) -- Ajuste para a coluna exata do seu filtro de ano
+			VAR vPct = [% Atingimento]
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se NÃO houver Mês E nem Ano selecionado (Visão Geral):
+			        NOT (vTemMes || vTemAno), "#A3B5D9",
+			
+			        -- 2. Se não houver dados de atingimento:
+			        ISBLANK(vPct), "#A3B5D9",
+			
+			        -- 3. Atingiu ou superou a meta (>= 100%):
+			        vPct >= 1, "#22C55E", -- Verde
+			
+			        -- 4. Ficou abaixo da meta (< 100%):
+			        "#F59E0B"             -- Laranja
+			    )
+		displayFolder: Vendedores\Cores
+		lineageTag: 9a512704-4e12-44e1-998e-941debbd5f1a
+
+	measure 'Cor Vendedor Atencao Pct Meta' = ```
+			
+			VAR vTemMes = HASONEVALUE(dCalendario[Mês]) -- Ajuste se o nome da coluna for diferente
+			VAR vTemAno = HASONEVALUE(dCalendario[Ano]) -- Ajuste se o nome da coluna for diferente
+			
+			VAR vPiorTabela =
+			    TOPN(
+			        1,
+			        FILTER(ALLSELECTED(dVendedores[nome_vendedor]), NOT ISBLANK([% Atingimento])),
+			        [% Atingimento], ASC
+			    )
+			VAR vPct =
+			    CALCULATE([% Atingimento], vPiorTabela)
+			VAR vGap = 1 - vPct
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Se NÃO houver Mês E nem Ano selecionado (Visão Geral):
+			        NOT (vTemMes || vTemAno), "#A3B5D9",
+			        
+			        -- 2. Sem dados:
+			        ISBLANK(vPct), "#A3B5D9", 
+			        
+			        -- 3. Todos bateram a meta:
+			        vGap <= 0, "#22C55E",      -- Verde
+			        
+			        -- 4. Abaixo da meta:
+			        "#F59E0B"                  -- Vermelho
+			    )
+			```
+		displayFolder: Vendedores\Cores
+		lineageTag: d14ca237-9256-4edd-b976-e73efbb6a9d9
+
+	/// Corrigido em 27/07 (2ª vez): faltava o mesmo CALCULATETABLE(..., ALL(dCalendario)) já aplicado em 'Atingimento Ultimo Mes'. Sem ele, o slicer de Mês/Ano da página filtrava VALUES(dCalendario[AnoMes]) pra só 1 mês, fazendo o subtítulo descrever ESSE mês como se fosse 'o mais recente da série' — achado testando Mês=junho no relatório publicado: mostrava 'Fecha jun/25 em 118,2% — o menor da série', quando jun/25 é na verdade o PICO da série inteira. Agora ignora slicers de período (mesmo trade-off já aceito na medida irmã): sempre descreve o último mês REAL do dataset inteiro, não o mês filtrado.
+	measure 'Subtitulo Atingimento Mensal' =
+			VAR vTabelaMeses =
+			    CALCULATETABLE(
+			        ADDCOLUMNS(
+			            VALUES(dCalendario[AnoMes]),
+			            "DataRef", CALCULATE(MIN(dCalendario[Data])),
+			            "Pct", CALCULATE([% Atingimento])
+			        ),
+			        ALL(dCalendario)
+			    )
+			VAR vMesesComDado = FILTER(vTabelaMeses, NOT ISBLANK([Pct]))
+			VAR vUltimaData = MAXX(vMesesComDado, [DataRef])
+			VAR vUltimoPct = MAXX(FILTER(vMesesComDado, [DataRef] = vUltimaData), [Pct])
+			VAR vMesTexto = LOWER(FORMAT(vUltimaData, "mmm/yy"))
+			VAR vTabelaAnteriorMenor =
+			    FILTER(vMesesComDado, [DataRef] < vUltimaData && [Pct] < vUltimoPct)
+			VAR vDataRecorde = MAXX(vTabelaAnteriorMenor, [DataRef])
+			VAR vDesdeTexto =
+			    IF(
+			        ISBLANK(vDataRecorde),
+			        "o menor da série",
+			        "menor desde " & LOWER(FORMAT(vDataRecorde, "mmm/yy"))
+			    )
+			RETURN
+			    IF(
+			        ISBLANK(vUltimaData),
+			        "Não há dados",
+			        "Fecha " & vMesTexto & " em " & FORMAT(vUltimoPct, "0.0%") & " — " & vDesdeTexto
+			    )
+		displayFolder: Vendedores\Rótulos
+		lineageTag: 19126ab2-ef1f-48b7-bbc5-e0aeb26fb4fa
+
+	measure 'Meta 100%' = 1.00
+		displayFolder: Vendedores
+		lineageTag: 18324f5b-ca7d-422b-bb6c-4d2972fbc24a
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Cor Rótulo Faltante Meta' = ```
+			
+			VAR vTexto = [Rótulo Faltante Meta]
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- Casos neutros / sem dados -> Cinza
+			        vTexto = "Sem comparação" || 
+			        CONTAINSSTRING(vTexto, "Não") || 
+			        CONTAINSSTRING(vTexto, "dados"), "#A3B5D9",
+			        
+			        -- Meta Batida -> Verde
+			        CONTAINSSTRING(vTexto, "Meta batida"), "#22C55E",
+			        
+			        -- Valor Faltante (Restante) -> Vermelho
+			        CONTAINSSTRING(vTexto, "Restante"), "#EF4444",
+			        
+			        -- Padrão -> Cinza
+			        "#A3B5D9"
+			    )
+			```
+		displayFolder: Executiva\Cores
+		lineageTag: f0f826f7-0dc8-41b6-8040-39288f31e8a7
+
+	measure 'Distancia Meta' =
+			
+			VAR vFat = [Faturamento Total]
+			VAR vMeta = [Meta Total]
+			RETURN
+			    IF(
+			        ISBLANK(vFat) && ISBLANK(vMeta),
+			        BLANK(),
+			        vFat - vMeta -- Ajustado: Faturamento menos Meta
+			    )
+		formatString: "R$"\ #,0;-"R$"\ #,0;"R$"\ #,0
+		displayFolder: Vendedores
+		lineageTag: 33c5f855-8b2b-489f-8876-9665f57b194a
+
+		annotation PBI_FormatHint = {"currencyCulture":"pt-BR"}
+
+	measure 'Distancia %' =
+			
+			VAR vFat = [Faturamento Total]
+			VAR vMeta = [Meta Total]
+			VAR vPct = DIVIDE(vFat - vMeta, vMeta)
+			
+			RETURN
+			    IF(
+			        ISBLANK(vPct),
+			        BLANK(),
+			        FORMAT(vPct, "+0.00%;-0.00%;0.00%")
+			    )
+		displayFolder: Vendedores
+		lineageTag: cef2e568-ae4c-4c08-8fd8-8bd2461da093
+
+	measure 'Cor Distancia %' = ```
+			
+			VAR vFat = [Faturamento Total]
+			VAR vMeta = [Meta Total]
+			VAR vPct = DIVIDE(vFat - vMeta, vMeta)
+			
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        -- 1. Sem dados: Cinza
+			        ISBLANK(vPct), "#A3B5D9",
+			        
+			        -- 2. Bateu ou superou a meta: Verde
+			        vPct >= 0, "#22C55E",
+			        
+			        -- 3. Abaixo da meta: Amarelo
+			        "#F59E0B"
+			    )
+			```
+		displayFolder: Vendedores\Cores
+		lineageTag: bf3d8231-eb6e-4dd0-b90e-845caccf36b1
+
+	column Value
+		isHidden
+		formatString: 0
+		lineageTag: 713a6875-9994-4ead-b1dd-a7f3fced068a
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Value]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Medidas = calculated
+		mode: import
+		source = {1}
+
+	annotation PBI_Id = 28a2ff50a3cf4c2d8edfe70199a6c4e4
+

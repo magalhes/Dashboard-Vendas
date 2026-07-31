@@ -1,0 +1,20 @@
+relationship AutoDetected_9b7368a8-dadb-4dfb-9df1-030e2fffa4ee
+	fromColumn: fVendas.id_produto
+	toColumn: dProdutos.id_produto
+
+relationship AutoDetected_24daf1c4-d91c-4ceb-8f6b-54c7ff0ba291
+	fromColumn: fVendas.id_vendedor
+	toColumn: dVendedores.id_vendedor
+
+relationship AutoDetected_0c5bcd16-8f47-4625-bef5-fe59ce776177
+	fromColumn: fMetas.id_vendedor
+	toColumn: dVendedores.id_vendedor
+
+relationship 048ea4e4-60b3-ebf4-2d6b-eb3e1890855a
+	fromColumn: fVendas.data_venda
+	toColumn: dCalendario.Data
+
+relationship 116d7f1a-d383-abc7-d3ee-d31f872761e5
+	fromColumn: fMetas.DataReferencia
+	toColumn: dCalendario.Data
+

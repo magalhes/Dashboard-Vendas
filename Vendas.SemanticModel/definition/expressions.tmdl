@@ -1,0 +1,21 @@
+expression 'Bases Vendas' = "C:\Users\lucas\Documents\Projeto BI\Vendas" meta [IsParameterQuery=true, Type="Any", IsParameterQueryRequired=true]
+	lineageTag: 51c5cf26-2181-438e-85e7-99f465b70d95
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Text
+
+expression 'Base Matriz' =
+		let
+		    Fonte = Folder.Files(#"Bases Vendas"),
+		    #"Linhas Filtradas" = Table.SelectRows(Fonte, each true),
+		    #"C:\Users\lucas\Documents\Projeto BI\Vendas\_Base de Dados xlsx" = #"Linhas Filtradas"{[#"Folder Path"="C:\Users\lucas\Documents\Projeto BI\Vendas\",Name="Base de Dados.xlsx"]}[Content],
+		    #"Pasta de Trabalho Importada do Excel" = Excel.Workbook(#"C:\Users\lucas\Documents\Projeto BI\Vendas\_Base de Dados xlsx")
+		in
+		    #"Pasta de Trabalho Importada do Excel"
+	lineageTag: f0627f6f-e352-4f99-91bb-1bfbe4e5371d
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Table
+

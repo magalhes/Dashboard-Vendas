@@ -1,0 +1,15 @@
+**/.pbi/localSettings.json
+**/.pbi/cache.abf
+
+# Arquivos sem relação com o projeto Vendas (dados reais de outro trabalho, junk, backups)
+CLIENTES_DA_OFERTA_CONVY__OFERTA_IPHONE_17_72.csv
+Documentos - Atalho.lnk
+Simpleanalytics*
+Box.svg
+Users.svg
+Fotos_Vendedores.xlsx
+Tema_Comercial_Dark.json
+Vendas.pbix
+_backup-Report-*/
+_mockup/
+_review/

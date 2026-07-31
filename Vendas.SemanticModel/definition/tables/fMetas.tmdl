@@ -1,0 +1,74 @@
+/// Fato de metas · 1 linha = meta de um vendedor num mês/ano. Fonte: Base de Dados.xlsx, aba Metas. Liga-se a dCalendario via DataReferencia (1º dia do mês).
+table fMetas
+	lineageTag: 44defdeb-ed9c-4810-a1df-1dba4b6a92dc
+
+	column ano
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 982fb211-1fc0-4bf9-bb1c-6e8bb2b30801
+		summarizeBy: none
+		sourceColumn: ano
+
+		annotation SummarizationSetBy = Automatic
+
+	column mês
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: c351d9b2-f7cd-4e6b-a011-014333d155a8
+		summarizeBy: none
+		sourceColumn: mês
+
+		annotation SummarizationSetBy = Automatic
+
+	column id_vendedor
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 37d0d2f0-b1c7-4823-a661-5fc1f7bc5227
+		summarizeBy: none
+		sourceColumn: id_vendedor
+
+		annotation SummarizationSetBy = Automatic
+
+	column valor_meta
+		dataType: decimal
+		formatString: "R$"\ #,0.###############;-"R$"\ #,0.###############;"R$"\ #,0.###############
+		lineageTag: 14d828bf-415f-416b-ac2c-3c28ee4e434d
+		summarizeBy: sum
+		sourceColumn: valor_meta
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"pt-BR"}
+
+	column DataReferencia
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: e2f86fd9-762d-4d65-afb9-e400e35516ef
+		summarizeBy: none
+		sourceColumn: fMetas.DataReferencia
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition fMetas = m
+		mode: import
+		queryGroup: Bases
+		source =
+				let
+				    Fonte = #"Base Matriz",
+				    Metas_Sheet = Fonte{[Item="Metas",Kind="Sheet"]}[Data],
+				    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Metas_Sheet, [PromoteAllScalars=true]),
+				    #"Tipo Alterado" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos",{{"ano", Int64.Type}, {"mês", Int64.Type}, {"id_vendedor", Int64.Type}, {"valor_meta", Currency.Type}}),
+				    #"Personalização Adicionada" = Table.AddColumn(#"Tipo Alterado", "fMetas.DataReferencia", each #date([ano], [mês], 1)),
+				    #"Tipo Alterado1" = Table.TransformColumnTypes(#"Personalização Adicionada",{{"fMetas.DataReferencia", type date}})
+				in
+				    #"Tipo Alterado1"
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Table
+
