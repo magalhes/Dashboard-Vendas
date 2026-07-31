@@ -2,7 +2,7 @@
 
 **Estudo de caso de análise de dados**: uma distribuidora fictícia de eletrônicos, uma pergunta de negócio, e a descoberta que ela escondia.
 
-🔴 **[Ver o dashboard ao vivo](https://magalhes.github.io/Dashboard-Vendas/)**
+🔴 **[Ver o dashboard ao vivo](https://app.powerbi.com/view?r=eyJrIjoiZTYzMjVjNjctY2NjYi00Y2UyLTgxOTYtNmI4M2EzMzQzY2I0IiwidCI6IjY1OWNlMmI4LTA3MTQtNDE5OC04YzM4LWRjOWI2MGFhYmI1NyJ9)**
 
 ---
 
